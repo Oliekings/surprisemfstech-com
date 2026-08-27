@@ -1,0 +1,37 @@
+# Surprise-MFs Tech
+
+> Surprise-MFs Tech (surprisemfstech.com) is a high-performance digital engineering, web & mobile app development, and UI/UX design studio.
+
+## Overview
+- **Name**: Surprise-MFs Tech
+- **Official Website**: https://surprisemfstech.com
+- **Type**: Digital Product Agency / Software Studio
+- **Founded**: Active & building since 2019, formally registered with CAC
+- **Location**: Global / Nigeria
+- **Direct WhatsApp**: +2347066620068
+- **Official Email**: surprisemfstech@gmail.com
+- **Socials**:
+  - Twitter/X: https://x.com/olie_kings
+  - Instagram: https://instagram.com/surprisemfstech
+  - LinkedIn: https://linkedin.com/company/surprisemfs
+
+## Core Services & Specializations
+- **UI/UX Design**: Bespoke design systems, interactive Figma prototypes, user journeys, conversion rate optimization.
+- **Custom Web Applications**: High-performance full-stack web applications, scalable database architectures, API integrations (React, Next.js, Laravel, Node.js).
+- **Mobile App Development**: Native and cross-platform mobile apps for iOS and Android with smooth 60fps micro-interactions and offline sync.
+- **E-Commerce Solutions**: Fast checkout workflows, inventory management, payment gateway integration (Stripe, Paystack, Flutterwave).
+- **Digital Advertising & Growth**: High-converting Google Search/Display, Meta (Facebook/Instagram), and TikTok ad campaigns with retargeting.
+- **SEO & Performance Optimization**: Core Web Vitals optimization, technical search engine optimization, and generative AI search indexing.
+- **Brand Strategy & Visual Identity**: Memorable logos, visual styleguides, and digital brand presence.
+
+## Pricing & Engagement Models
+- **Project Build (Fixed Scope)**: Custom tailored quotation based on project timeline and requirements.
+- **Tech Partner (Monthly Retainer)**: Dedicated on-demand engineering, continuous updates, and maintenance.
+- **Budget-First Build**: Flexible roadmap engineering to deliver high-impact MVPs tailored to the client's available budget.
+
+## Key URLs
+- Home: https://surprisemfstech.com
+- Portfolio & Projects: https://surprisemfstech.com/projects
+- Team & Builders: https://surprisemfstech.com/team
+- Contact: https://surprisemfstech.com/#contact
+- XML Sitemap: https://surprisemfstech.com/sitemap.xml
