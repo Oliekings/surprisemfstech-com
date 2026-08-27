@@ -1,8 +1,41 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, ArrowRight } from 'lucide-react';
+import { X, Send, ArrowRight, DollarSign, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import { WHATSAPP_URL, EMAIL } from './WhatsAppButton';
+
+// ─── Supported Currencies & Presets ───
+const CURRENCIES = {
+  USD: { code: 'USD', symbol: '$', name: 'US Dollar', presets: ['1,500', '3,000', '5,000', '10,000+'] },
+  NGN: { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', presets: ['1,000,000', '2,500,000', '5,000,000', '10,000,000+'] },
+  GBP: { code: 'GBP', symbol: '£', name: 'British Pound', presets: ['1,200', '2,500', '4,500', '8,000+'] },
+  EUR: { code: 'EUR', symbol: '€', name: 'Euro', presets: ['1,500', '3,000', '5,000', '10,000+'] },
+  CAD: { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', presets: ['2,000', '4,000', '7,500', '15,000+'] },
+  AUD: { code: 'AUD', symbol: 'AU$', name: 'Australian Dollar', presets: ['2,000', '4,500', '8,000', '15,000+'] },
+  GHS: { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', presets: ['15,000', '30,000', '60,000', '120,000+'] },
+  ZAR: { code: 'ZAR', symbol: 'R', name: 'South African Rand', presets: ['25,000', '50,000', '100,000', '200,000+'] },
+  AED: { code: 'AED', symbol: 'AED', name: 'UAE Dirham', presets: ['5,000', '12,000', '25,000', '50,000+'] },
+};
+
+// ─── Fast Timezone-to-Currency Resolver ───
+function detectLocalCurrency() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (tz.includes('Lagos') || tz.includes('Nigeria') || tz.includes('Kano')) return 'NGN';
+    if (tz.includes('London') || tz.includes('Edinburgh') || tz.includes('Belfast')) return 'GBP';
+    if (
+      tz.includes('Paris') || tz.includes('Berlin') || tz.includes('Amsterdam') ||
+      tz.includes('Rome') || tz.includes('Madrid') || tz.includes('Brussels') ||
+      tz.includes('Vienna') || tz.includes('Dublin') || tz.includes('Europe')
+    ) return 'EUR';
+    if (tz.includes('Toronto') || tz.includes('Vancouver') || tz.includes('Montreal') || tz.includes('Edmonton') || tz.includes('Winnipeg') || tz.includes('Calgary')) return 'CAD';
+    if (tz.includes('Sydney') || tz.includes('Melbourne') || tz.includes('Brisbane') || tz.includes('Perth') || tz.includes('Adelaide') || tz.includes('Australia')) return 'AUD';
+    if (tz.includes('Accra')) return 'GHS';
+    if (tz.includes('Johannesburg') || tz.includes('Cape_Town')) return 'ZAR';
+    if (tz.includes('Dubai') || tz.includes('Abu_Dhabi')) return 'AED';
+  } catch (e) {}
+  return 'USD';
+}
 
 export default function ContactTerminal({ isOpen, onClose }) {
   const { props } = usePage();
@@ -10,6 +43,47 @@ export default function ContactTerminal({ isOpen, onClose }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ name: '', email: '', budget: '', details: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Currency & Budget States
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [recommendedCurrency, setRecommendedCurrency] = useState('USD');
+  const [customAmount, setCustomAmount] = useState('');
+  const [isFlexibleBudget, setIsFlexibleBudget] = useState(false);
+
+  // Auto-detect currency on mount via Timezone + IP Lookup
+  useEffect(() => {
+    const initialCode = detectLocalCurrency();
+    setSelectedCurrency(initialCode);
+    setRecommendedCurrency(initialCode);
+
+    // Refine with lightweight IP check if available
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.currency && CURRENCIES[data.currency]) {
+          setSelectedCurrency(data.currency);
+          setRecommendedCurrency(data.currency);
+        } else if (data && data.country_code === 'NG') {
+          setSelectedCurrency('NGN');
+          setRecommendedCurrency('NGN');
+        }
+      })
+      .catch(() => {
+        // Fallback to timezone detection (already set)
+      });
+  }, []);
+
+  // Update formData.budget whenever currency or amount changes
+  useEffect(() => {
+    if (isFlexibleBudget) {
+      setFormData(prev => ({ ...prev, budget: `Flexible / Tailored Scope (${selectedCurrency})` }));
+    } else if (customAmount.trim()) {
+      const curr = CURRENCIES[selectedCurrency] || CURRENCIES.USD;
+      setFormData(prev => ({ ...prev, budget: `${curr.symbol}${customAmount.trim()} ${selectedCurrency}` }));
+    } else {
+      setFormData(prev => ({ ...prev, budget: '' }));
+    }
+  }, [selectedCurrency, customAmount, isFlexibleBudget]);
 
   // Close on Escape key
   useEffect(() => {
@@ -20,6 +94,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
 
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -33,14 +108,18 @@ export default function ContactTerminal({ isOpen, onClose }) {
           onClose();
           setStep(1);
           setFormData({ name: '', email: '', budget: '', details: '' });
+          setCustomAmount('');
+          setIsFlexibleBudget(false);
         }, 8000);
       },
       onError: () => {
         setIsSubmitting(false);
-        setStep(4); // Still show success for UX
+        setStep(4);
       }
     });
   };
+
+  const currObj = CURRENCIES[selectedCurrency] || CURRENCIES.USD;
 
   return (
     <AnimatePresence>
@@ -61,138 +140,295 @@ export default function ContactTerminal({ isOpen, onClose }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 60, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 md:inset-0 md:m-auto w-full md:max-w-xl h-[85vh] md:h-fit md:max-h-[80vh] bg-zinc-950 border border-amber-500/10 rounded-t-3xl md:rounded-3xl z-[101] flex flex-col overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+            className="fixed bottom-0 left-0 right-0 md:inset-0 md:m-auto w-full md:max-w-2xl h-[90vh] md:h-fit md:max-h-[85vh] bg-zinc-950 border border-amber-500/20 rounded-t-3xl md:rounded-3xl z-[101] flex flex-col overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.9)]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-6 py-5 border-b border-white/[0.06]">
+            <div className="flex justify-between items-center px-6 py-5 border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-md">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
                   <span className="text-amber-400 text-sm">✉</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Get in Touch</h3>
-                  <p className="text-[10px] text-zinc-500">We'll reply within 24 hours</p>
+                  <h3 className="text-sm font-bold text-white font-heading">Start a Project Inquiry</h3>
+                  <p className="text-[10px] text-zinc-400">Direct response within 24 hours</p>
                 </div>
               </div>
-              <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors">
+              <button 
+                onClick={onClose} 
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
+                title="Close"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Body */}
-            <div className="p-8 md:p-10 flex-grow overflow-y-auto relative z-10">
+            <div className="p-6 md:p-10 flex-grow overflow-y-auto relative z-10">
               <AnimatePresence mode="wait">
+                
+                {/* ════════ STEP 1: ABOUT YOU ════════ */}
                 {step === 1 && (
                   <motion.div key="s1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
-                    <div className="flex items-center gap-2 text-zinc-600 mb-8">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                      <span className="text-[10px] uppercase tracking-[0.3em] font-medium">Step 1 of 3 · About You</span>
+                    <div className="flex items-center gap-2 text-zinc-500 mb-6">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-amber-400">Step 1 of 3 · Your Information</span>
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 text-white">
-                      Tell us about yourself
+                    <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-2 text-white font-heading">
+                      Let's start with an introduction
                     </h3>
-                    <p className="text-zinc-500 text-sm mb-8">So we know who we're talking to.</p>
-                    <input
-                      type="text"
-                      placeholder="Your name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && formData.name && formData.email) handleNext(); }}
-                      className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-4 mb-4 focus:outline-none focus:border-amber-500/40 text-base placeholder:text-zinc-700 transition-colors"
-                      autoFocus
-                    />
-                    <input
-                      type="email"
-                      placeholder="Your email address"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && formData.name && formData.email) handleNext(); }}
-                      className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-4 mb-8 focus:outline-none focus:border-amber-500/40 text-base placeholder:text-zinc-700 transition-colors"
-                    />
+                    <p className="text-zinc-400 text-xs md:text-sm mb-8">Tell us your name and where we can reach you.</p>
+                    
+                    <div className="space-y-4 mb-8">
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                          Your Full Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. John Doe"
+                          value={formData.name}
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && formData.name && formData.email) handleNext(); }}
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                          Work Email Address
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="e.g. john@company.com"
+                          value={formData.email}
+                          onChange={(e) => setFormData({...formData, email: e.target.value})}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && formData.name && formData.email) handleNext(); }}
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all"
+                        />
+                      </div>
+                    </div>
+
                     <button
                       onClick={handleNext}
-                      disabled={!formData.name || !formData.email}
-                      className="w-full py-4 bg-amber-500 text-black font-bold uppercase tracking-widest rounded-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-amber-400 transition-all hover:scale-[1.01] flex justify-center items-center gap-3"
+                      disabled={!formData.name.trim() || !formData.email.trim()}
+                      className="w-full py-4 bg-amber-500 text-black font-extrabold text-xs uppercase tracking-widest rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-amber-400 transition-all hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] flex justify-center items-center gap-2"
                     >
-                      Continue <ArrowRight className="w-4 h-4" />
+                      <span>Continue</span>
+                      <ArrowRight className="w-4 h-4" />
                     </button>
                   </motion.div>
                 )}
 
+                {/* ════════ STEP 2: CUSTOM BUDGET & IP CURRENCY ════════ */}
                 {step === 2 && (
                   <motion.div key="s2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
-                    <div className="flex items-center gap-2 text-zinc-600 mb-8">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                      <span className="text-[10px] uppercase tracking-[0.3em] font-medium">Step 2 of 3 · Budget</span>
+                    <div className="flex items-center gap-2 text-zinc-500 mb-6">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-amber-400">Step 2 of 3 · Budget & Currency</span>
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 text-white">
-                      What's your budget?
+
+                    <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-2 text-white font-heading">
+                      What is your allocated budget?
                     </h3>
-                    <p className="text-zinc-500 text-sm mb-8">Don't worry — we work with all budgets.</p>
-                    <div className="grid grid-cols-2 gap-3 mb-8">
-                      {['$1k – $5k', '$5k – $10k', '$10k – $25k', '$25k+'].map(b => (
-                        <button
-                          key={b}
-                          onClick={() => setFormData({...formData, budget: b})}
-                          className={`py-4 rounded-xl border transition-all duration-300 text-sm font-medium hover:scale-[1.02] ${
-                            formData.budget === b
-                              ? 'border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.1)]'
-                              : 'border-white/10 text-zinc-500 hover:border-amber-500/30 hover:text-zinc-300'
-                          }`}
-                        >
-                          {b}
-                        </button>
-                      ))}
+                    <p className="text-zinc-400 text-xs md:text-sm mb-6">
+                      Select your preferred currency or enter the exact amount you want to work with.
+                    </p>
+
+                    {/* Currency Selector Pills */}
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                          Select Currency
+                        </label>
+                        {recommendedCurrency && (
+                          <span className="text-[10px] font-semibold text-amber-400/90 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-amber-400" />
+                            Detected via Location: <strong className="text-amber-300">{recommendedCurrency}</strong>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {Object.values(CURRENCIES).map((c) => {
+                          const isSelected = selectedCurrency === c.code;
+                          const isRec = recommendedCurrency === c.code;
+
+                          return (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCurrency(c.code);
+                                setIsFlexibleBudget(false);
+                              }}
+                              className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
+                                isSelected
+                                  ? 'bg-amber-500 text-black border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)] scale-[1.03]'
+                                  : isRec
+                                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:border-amber-500/60'
+                                  : 'bg-white/[0.02] text-zinc-400 border-white/10 hover:border-white/20 hover:text-white'
+                              }`}
+                            >
+                              <span>{c.symbol}</span>
+                              <span>{c.code}</span>
+                              {isRec && !isSelected && (
+                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-normal">
+                                  Auto
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    {/* Custom Amount Input */}
+                    <div className="mb-6">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                        Enter Custom Amount ({currObj.name})
+                      </label>
+                      <div className="relative flex items-center">
+                        <span className="absolute left-4 text-amber-400 font-extrabold text-lg pointer-events-none select-none">
+                          {currObj.symbol}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g. 5,000"
+                          value={customAmount}
+                          disabled={isFlexibleBudget}
+                          onChange={(e) => {
+                            setIsFlexibleBudget(false);
+                            setCustomAmount(e.target.value);
+                          }}
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.05] text-white text-lg font-bold placeholder:text-zinc-600 disabled:opacity-30 transition-all font-mono"
+                        />
+                        <span className="absolute right-4 text-xs font-bold uppercase tracking-wider text-zinc-500 pointer-events-none">
+                          {selectedCurrency}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Suggested Preset Buttons for Quick Choice */}
+                    <div className="mb-6">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2.5">
+                        Or select a quick tier:
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {currObj.presets.map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => {
+                              setIsFlexibleBudget(false);
+                              setCustomAmount(preset);
+                            }}
+                            className={`py-2.5 px-3 rounded-xl border text-xs font-semibold font-mono transition-all ${
+                              customAmount === preset && !isFlexibleBudget
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] font-bold'
+                                : 'bg-white/[0.02] text-zinc-400 border-white/10 hover:border-amber-500/30 hover:text-white'
+                            }`}
+                          >
+                            {currObj.symbol}{preset}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Flexible Option Toggle */}
+                    <div className="mb-8">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsFlexibleBudget(!isFlexibleBudget);
+                          if (!isFlexibleBudget) setCustomAmount('');
+                        }}
+                        className={`w-full py-3 px-4 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                          isFlexibleBudget
+                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/50'
+                            : 'bg-white/[0.01] text-zinc-400 border-white/10 hover:border-white/20'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isFlexibleBudget ? 'border-amber-400 bg-amber-400' : 'border-zinc-600'}`}>
+                            {isFlexibleBudget && <span className="w-1.5 h-1.5 rounded-full bg-black" />}
+                          </span>
+                          <span>I'm flexible / Let's tailor the scope to my available budget</span>
+                        </span>
+                        <span className="text-[10px] text-zinc-500">Flexible</span>
+                      </button>
+                    </div>
+
                     <div className="flex gap-3">
                       <button
                         onClick={handleBack}
-                        className="px-6 py-4 border border-white/10 text-zinc-400 rounded-xl hover:bg-white/5 transition-all text-sm font-medium"
+                        className="px-6 py-3.5 border border-white/10 text-zinc-400 rounded-2xl hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider"
                       >
                         Back
                       </button>
                       <button
                         onClick={handleNext}
                         disabled={!formData.budget}
-                        className="flex-1 py-4 bg-amber-500 text-black font-bold uppercase tracking-widest rounded-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-amber-400 transition-all hover:scale-[1.01] flex justify-center items-center gap-3"
+                        className="flex-1 py-3.5 bg-amber-500 text-black font-extrabold text-xs uppercase tracking-widest rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-amber-400 transition-all hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] flex justify-center items-center gap-2"
                       >
-                        Continue <ArrowRight className="w-4 h-4" />
+                        <span>Continue</span>
+                        <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
                   </motion.div>
                 )}
 
+                {/* ════════ STEP 3: PROJECT DETAILS ════════ */}
                 {step === 3 && (
                   <motion.div key="s3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
-                    <div className="flex items-center gap-2 text-zinc-600 mb-8">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                      <span className="text-[10px] uppercase tracking-[0.3em] font-medium">Step 3 of 3 · Your Project</span>
+                    <div className="flex items-center gap-2 text-zinc-500 mb-6">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-amber-400">Step 3 of 3 · Project Overview</span>
                     </div>
-                    <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 text-white">
+
+                    <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-2 text-white font-heading">
                       Tell us about your project
                     </h3>
-                    <p className="text-zinc-500 text-sm mb-8">What do you need? Website, app, marketing? The more detail, the better.</p>
-                    <textarea
-                      placeholder="Describe what you'd like us to build..."
-                      value={formData.details}
-                      onChange={(e) => setFormData({...formData, details: e.target.value})}
-                      className="w-full h-32 bg-white/[0.03] border border-white/10 rounded-xl p-4 mb-8 focus:outline-none focus:border-amber-500/40 text-base placeholder:text-zinc-700 transition-colors resize-none"
-                    />
+                    <p className="text-zinc-400 text-xs md:text-sm mb-6">
+                      What are you building? E-commerce, web application, mobile app, or digital advertising?
+                    </p>
+
+                    {/* Summary Badge of User's budget */}
+                    {formData.budget && (
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-6 flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">Selected Budget:</span>
+                        <span className="font-bold text-amber-300 font-mono">{formData.budget}</span>
+                      </div>
+                    )}
+
+                    <div className="mb-8">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                        Project Scope & Goals
+                      </label>
+                      <textarea
+                        placeholder="Briefly describe what you'd like us to engineer, desired timelines, or any links..."
+                        value={formData.details}
+                        onChange={(e) => setFormData({...formData, details: e.target.value})}
+                        className="w-full h-36 bg-white/[0.03] border border-white/10 rounded-2xl p-4 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all resize-none"
+                      />
+                    </div>
+
                     <div className="flex gap-3">
                       <button
                         onClick={handleBack}
-                        className="px-6 py-4 border border-white/10 text-zinc-400 rounded-xl hover:bg-white/5 transition-all text-sm font-medium"
+                        className="px-6 py-3.5 border border-white/10 text-zinc-400 rounded-2xl hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider"
                       >
                         Back
                       </button>
                       <button
                         onClick={handleSubmit}
-                        disabled={!formData.details || isSubmitting}
-                        className="flex-1 py-4 bg-amber-500 text-black font-bold uppercase tracking-widest rounded-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-amber-400 transition-all hover:scale-[1.01] flex justify-center items-center gap-3 group"
+                        disabled={!formData.details.trim() || isSubmitting}
+                        className="flex-1 py-3.5 bg-amber-500 text-black font-extrabold text-xs uppercase tracking-widest rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-amber-400 transition-all hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] flex justify-center items-center gap-2 group"
                       >
                         {isSubmitting ? (
                           <span className="flex items-center gap-2">
-                            Sending
+                            <span>Submitting Inquiry</span>
                             <span className="flex gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-black animate-bounce" style={{ animationDelay: '0ms' }} />
                               <span className="w-1.5 h-1.5 rounded-full bg-black animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -200,51 +436,53 @@ export default function ContactTerminal({ isOpen, onClose }) {
                             </span>
                           </span>
                         ) : (
-                          <>Send Message <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>
+                          <>
+                            <span>Send Message</span>
+                            <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </>
                         )}
                       </button>
                     </div>
                   </motion.div>
                 )}
 
+                {/* ════════ STEP 4: SUCCESS CONFIRMATION ════════ */}
                 {step === 4 && (
-                  <motion.div key="s4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", damping: 20 }} className="h-full flex flex-col items-center justify-center text-center py-8">
+                  <motion.div key="s4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", damping: 20 }} className="h-full flex flex-col items-center justify-center text-center py-6">
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", damping: 15, delay: 0.2 }}
-                      className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-6 ring-4 ring-amber-500/5"
+                      className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-6 ring-4 ring-amber-500/10"
                     >
                       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </motion.div>
-                    <h3 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 text-white">Message Sent!</h3>
-                    <p className="text-zinc-400 text-sm mb-8">We'll get back to you within 24 hours.</p>
+                    <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-2 text-white font-heading">
+                      Inquiry Received!
+                    </h3>
+                    <p className="text-zinc-400 text-xs md:text-sm mb-6 max-w-sm">
+                      Thank you <strong className="text-white">{formData.name}</strong>. We've logged your request and our lead developer will review your scope within 24 hours.
+                    </p>
 
                     <div className="flex flex-col gap-3 w-full max-w-sm">
                       <a
-                        href={WHATSAPP_URL}
+                        href={`https://wa.me/2347066620068?text=Hello%20Surprise-MFs%20Tech,%20I%20just%20submitted%20an%20inquiry%20for%20a%20project%20with%20budget%20${encodeURIComponent(formData.budget || 'Flexible')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full py-3 px-4 rounded-xl btn-whatsapp font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2"
+                        className="w-full py-3.5 px-4 rounded-2xl btn-whatsapp font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                         </svg>
-                        Chat on WhatsApp Now
-                      </a>
-                      <a
-                        href={`mailto:${EMAIL}?subject=Project Inquiry - ${encodeURIComponent(formData.name || 'Client')}`}
-                        className="w-full py-3 px-4 rounded-xl border border-white/10 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors text-center font-medium"
-                      >
-                        Or email us at {EMAIL}
+                        Instant WhatsApp Chat
                       </a>
                       <button
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-xl text-zinc-600 hover:text-zinc-400 text-xs uppercase tracking-widest transition-colors"
+                        className="w-full py-3 px-4 rounded-2xl text-zinc-500 hover:text-white text-xs uppercase tracking-wider transition-colors"
                       >
-                        Close
+                        Close Window
                       </button>
                     </div>
                   </motion.div>
@@ -255,7 +493,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
             {/* Progress bar */}
             <div className="h-1 bg-white/[0.03]">
               <motion.div
-                className="h-full bg-gradient-to-r from-amber-500 to-teal-500"
+                className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600"
                 animate={{ width: `${(Math.min(step, 3) / 3) * 100}%` }}
                 transition={{ duration: 0.5 }}
               />

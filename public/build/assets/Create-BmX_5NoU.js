@@ -1,1 +1,0 @@
-import{j as t}from"./app-vRtNfTFI.js";import r from"./Edit-Bfvv2W9H.js";/* empty css            */import"./AuthenticatedLayout-DnbsOeFq.js";import"./transition-Ciq5zq9e.js";import"./createLucideIcon-ptfKc1Eo.js";import"./arrow-left-5DR-0puc.js";function u(){return t.jsx(r,{project:null})}export{u as default};
