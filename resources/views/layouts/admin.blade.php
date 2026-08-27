@@ -212,7 +212,7 @@
                 </div>
             @endif
 
-            @if($errors->any())
+            @if(isset($errors) && $errors->any())
                 <div class="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs space-y-1">
                     <p class="font-bold">Please correct the following errors:</p>
                     <ul class="list-disc list-inside space-y-0.5 opacity-90">
