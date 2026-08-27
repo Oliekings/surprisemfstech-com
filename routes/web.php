@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminProjectController;
 use App\Http\Controllers\Admin\AdminServiceController;
 use App\Http\Controllers\Admin\AdminTeamController;
 use App\Http\Controllers\Admin\AdminSettingController;
+use App\Http\Controllers\Admin\AdminProfileController;
 
 Route::post('/inquiry', [InquiryController::class, 'store'])
     ->middleware('throttle:5,1')
@@ -213,6 +214,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::resource('team', AdminTeamController::class);
     Route::get('/settings', [AdminSettingController::class, 'index'])->name('settings.index');
     Route::post('/settings', [AdminSettingController::class, 'update'])->name('settings.update');
+    Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [AdminProfileController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [AdminProfileController::class, 'updatePassword'])->name('profile.password');
 });
 
 Route::middleware('auth')->group(function () {

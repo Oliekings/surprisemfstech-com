@@ -126,6 +126,14 @@
                     <svg class="w-4 h-4 {{ request()->routeIs('admin.settings.*') ? 'text-black' : 'text-amber-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     Studio Settings
                 </a>
+
+                <a 
+                    href="{{ route('admin.profile.edit') }}" 
+                    class="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all {{ request()->routeIs('admin.profile.*') ? 'bg-amber-500 text-black shadow-[0_0_25px_rgba(245,158,11,0.25)] font-bold' : 'text-zinc-400 hover:text-white hover:bg-zinc-900/80' }}"
+                >
+                    <svg class="w-4 h-4 {{ request()->routeIs('admin.profile.*') ? 'text-black' : 'text-amber-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    Profile & Security
+                </a>
             </nav>
         </div>
 
@@ -140,18 +148,18 @@
                 <span>↗</span>
             </a>
 
-            <div class="p-3 rounded-2xl bg-zinc-900/40 border border-zinc-800/40 flex items-center justify-between">
-                <div class="flex items-center gap-3 overflow-hidden">
-                    <div class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs font-bold text-amber-400 shrink-0">
+            <div class="p-3 rounded-2xl bg-zinc-900/40 border border-zinc-800/40 flex items-center justify-between group hover:border-amber-500/30 transition-all">
+                <a href="{{ route('admin.profile.edit') }}" class="flex items-center gap-3 overflow-hidden flex-1 min-w-0" title="Edit Profile & Password">
+                    <div class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs font-bold text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
                         {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
                     </div>
                     <div class="truncate">
-                        <p class="text-xs font-bold text-white truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-xs font-bold text-white group-hover:text-amber-300 transition-colors truncate">{{ auth()->user()->name }}</p>
                         <p class="text-[10px] text-zinc-500 truncate">{{ auth()->user()->email }}</p>
                     </div>
-                </div>
+                </a>
 
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" class="shrink-0 ml-2">
                     @csrf
                     <button type="submit" class="p-2 text-zinc-400 hover:text-red-400 transition-colors" title="Log Out">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
