@@ -2,10 +2,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { usePage } from '@inertiajs/react';
 
-const WHATSAPP_NUMBER = '2347066620068';
-const WHATSAPP_MESSAGE = "Hi! I'm interested in working with Surprise-MFs Tech.";
-const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
-const EMAIL = 'surprisemfstech@gmail.com';
+export const WHATSAPP_NUMBER = '2347066620068';
+export const WHATSAPP_MESSAGE = "Hi! I'm interested in working with Surprise-MFs Tech.";
+export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+export const EMAIL = 'surprisemfstech@gmail.com';
 
 export default function WhatsAppButton() {
   const { props } = usePage();
