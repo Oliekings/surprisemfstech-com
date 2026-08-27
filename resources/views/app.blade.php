@@ -11,8 +11,12 @@
         <meta name="keywords" content="Surprise-MFs Tech, web development, mobile app development, UI/UX design, custom software company, react developers, laravel agency, digital advertising, google ads, nigerian tech studio, hire developers, website designers">
         <meta name="author" content="Surprise-MFs Tech">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-        <link rel="canonical" href="https://surprisemfstech.com">
         <meta name="theme-color" content="#000000">
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <link rel="alternate icon" href="/favicon.ico">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <!-- Geo & Language Meta for Global & Local SEO -->
         <meta name="geo.region" content="NG">
