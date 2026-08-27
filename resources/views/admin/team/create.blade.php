@@ -24,7 +24,7 @@
                 type="text" 
                 name="name" 
                 value="{{ old('name') }}" 
-                placeholder="e.g. Olie Kings" 
+                placeholder="e.g. Alex Morgan" 
                 required
                 class="w-full px-4 py-3 rounded-2xl bg-zinc-900/90 border border-zinc-800 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
             >

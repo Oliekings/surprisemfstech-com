@@ -230,7 +230,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
                         </label>
                         <input
                           type="text"
-                          placeholder="e.g. Olie Kings"
+                          placeholder="e.g. Alex Morgan"
                           value={formData.name}
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
                           onKeyDown={(e) => { if (e.key === 'Enter' && canProceedStep1) handleNext(); }}

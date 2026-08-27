@@ -38,7 +38,7 @@
                             value="{{ old('name', $user->name) }}" 
                             required
                             class="w-full px-4 py-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-white text-sm transition-all"
-                            placeholder="e.g. Olie Kings"
+                            placeholder="e.g. Alex Morgan"
                         >
                         @error('name')
                             <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
