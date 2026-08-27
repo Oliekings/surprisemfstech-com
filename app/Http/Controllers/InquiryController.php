@@ -13,28 +13,22 @@ class InquiryController extends Controller
      */
     public function store(Request $request)
     {
-        // Honeypot spam trap check
-        if (!empty($request->input('hp_address'))) {
-            // Silently pretend success to fool bots
-            return back()->with('success', 'Inquiry received.');
-        }
-
         $validated = $request->validate([
-            'name' => ['required', 'string', 'min:2', 'max:255'],
-            'email' => ['required', 'string', 'email:rfc,filter', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'budget' => ['nullable', 'string', 'max:100'],
-            'details' => ['required', 'string', 'min:10', 'max:5000'],
+            'details' => ['required', 'string', 'max:10000'],
         ]);
 
-        Inquiry::create([
+        $inquiry = Inquiry::create([
             'name' => trim($validated['name']),
             'email' => strtolower(trim($validated['email'])),
-            'budget' => $validated['budget'] ?? 'Flexible',
+            'budget' => !empty($validated['budget']) ? trim($validated['budget']) : 'Flexible Scope',
             'details' => trim($validated['details']),
             'status' => 'new',
         ]);
 
-        return back()->with('success', 'Thank you! Your message has been received. We will be in touch shortly.');
+        return back()->with('success', 'Thank you! Your message has been received.');
     }
 
     /**

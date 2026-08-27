@@ -37,7 +37,7 @@ function detectLocalCurrency() {
   return 'USD';
 }
 
-// Strict Email Validator
+// Email Validator
 function validateEmail(email) {
   if (!email || !email.trim()) return false;
   const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -48,7 +48,6 @@ function validateEmail(email) {
   if (parts.length !== 2) return false;
   const domain = parts[1].toLowerCase();
 
-  // Block dummy / obvious disposable spam inputs
   const fakeDomains = ['test.com', 'example.com', 'asdf.com', 'fake.com', 'tempmail.com', 'mailinator.com'];
   if (fakeDomains.includes(domain)) return false;
 
@@ -59,9 +58,10 @@ export default function ContactTerminal({ isOpen, onClose }) {
   const { props } = usePage();
   const settings = props.settings || {};
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({ name: '', email: '', budget: '', details: '', hp_address: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', budget: '', details: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   // Currency & Budget States (DEFAULT ALWAYS USD $)
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
@@ -116,17 +116,29 @@ export default function ContactTerminal({ isOpen, onClose }) {
       setEmailTouched(true);
       return;
     }
+    setSubmitError(null);
     setStep(step + 1);
   };
-  const handleBack = () => setStep(step - 1);
+  const handleBack = () => {
+    setSubmitError(null);
+    setStep(step - 1);
+  };
   
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.details.trim()) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    router.post('/inquiry', formData, {
+    const payload = {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      budget: formData.budget || 'Flexible Scope',
+      details: formData.details.trim(),
+    };
+
+    router.post('/inquiry', payload, {
       preserveScroll: true,
       onSuccess: () => {
         setIsSubmitting(false);
@@ -134,15 +146,17 @@ export default function ContactTerminal({ isOpen, onClose }) {
         setTimeout(() => {
           onClose();
           setStep(1);
-          setFormData({ name: '', email: '', budget: '', details: '', hp_address: '' });
+          setFormData({ name: '', email: '', budget: '', details: '' });
           setCustomAmount('');
           setIsFlexibleBudget(false);
           setEmailTouched(false);
+          setSubmitError(null);
         }, 8000);
       },
-      onError: () => {
+      onError: (errors) => {
         setIsSubmitting(false);
-        setStep(4);
+        const firstError = Object.values(errors)[0] || 'Unable to submit your message. Please check all fields and try again.';
+        setSubmitError(firstError);
       }
     });
   };
@@ -208,17 +222,6 @@ export default function ContactTerminal({ isOpen, onClose }) {
                     <p className="text-zinc-400 text-xs md:text-sm mb-6">
                       Tell us your name and your active email address so we can reply with your project proposal.
                     </p>
-
-                    {/* Honeypot hidden input (Spam protection) */}
-                    <input 
-                      type="text" 
-                      name="hp_address" 
-                      value={formData.hp_address} 
-                      onChange={(e) => setFormData({...formData, hp_address: e.target.value})} 
-                      tabIndex="-1" 
-                      autoComplete="off" 
-                      className="hidden" 
-                    />
 
                     <div className="space-y-4 mb-8">
                       <div>
@@ -462,6 +465,14 @@ export default function ContactTerminal({ isOpen, onClose }) {
                     <p className="text-zinc-400 text-xs md:text-sm mb-6">
                       What are you looking to build? (Website, web app, mobile application, or digital growth).
                     </p>
+
+                    {/* Submit Error Alert */}
+                    {submitError && (
+                      <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-3">
+                        <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                        <span>{submitError}</span>
+                      </div>
+                    )}
 
                     {/* Summary Badge of User's budget */}
                     {formData.budget && (
