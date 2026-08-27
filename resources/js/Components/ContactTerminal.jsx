@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, ArrowRight, DollarSign, Sparkles } from 'lucide-react';
+import { X, Send, ArrowRight, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import { WHATSAPP_URL, EMAIL } from './WhatsAppButton';
@@ -37,46 +37,62 @@ function detectLocalCurrency() {
   return 'USD';
 }
 
+// Strict Email Validator
+function validateEmail(email) {
+  if (!email || !email.trim()) return false;
+  const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const trimmed = email.trim();
+  if (!re.test(trimmed)) return false;
+
+  const parts = trimmed.split('@');
+  if (parts.length !== 2) return false;
+  const domain = parts[1].toLowerCase();
+
+  // Block dummy / obvious disposable spam inputs
+  const fakeDomains = ['test.com', 'example.com', 'asdf.com', 'fake.com', 'tempmail.com', 'mailinator.com'];
+  if (fakeDomains.includes(domain)) return false;
+
+  return true;
+}
+
 export default function ContactTerminal({ isOpen, onClose }) {
   const { props } = usePage();
   const settings = props.settings || {};
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({ name: '', email: '', budget: '', details: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', budget: '', details: '', hp_address: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
 
-  // Currency & Budget States
+  // Currency & Budget States (DEFAULT ALWAYS USD $)
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
-  const [recommendedCurrency, setRecommendedCurrency] = useState('USD');
+  const [recommendedCurrency, setRecommendedCurrency] = useState('');
   const [customAmount, setCustomAmount] = useState('');
   const [isFlexibleBudget, setIsFlexibleBudget] = useState(false);
 
-  // Auto-detect currency on mount via Timezone + IP Lookup
+  // Auto-detect local currency in background for recommendation only
   useEffect(() => {
-    const initialCode = detectLocalCurrency();
-    setSelectedCurrency(initialCode);
-    setRecommendedCurrency(initialCode);
+    const local = detectLocalCurrency();
+    if (local && local !== 'USD') {
+      setRecommendedCurrency(local);
+    }
 
-    // Refine with lightweight IP check if available
+    // Refine with IP lookup if available
     fetch('https://ipapi.co/json/')
       .then(res => res.json())
       .then(data => {
-        if (data && data.currency && CURRENCIES[data.currency]) {
-          setSelectedCurrency(data.currency);
+        if (data && data.currency && data.currency !== 'USD' && CURRENCIES[data.currency]) {
           setRecommendedCurrency(data.currency);
         } else if (data && data.country_code === 'NG') {
-          setSelectedCurrency('NGN');
           setRecommendedCurrency('NGN');
         }
       })
-      .catch(() => {
-        // Fallback to timezone detection (already set)
-      });
+      .catch(() => {});
   }, []);
 
   // Update formData.budget whenever currency or amount changes
   useEffect(() => {
     if (isFlexibleBudget) {
-      setFormData(prev => ({ ...prev, budget: `Flexible / Tailored Scope (${selectedCurrency})` }));
+      setFormData(prev => ({ ...prev, budget: `Flexible Scope (${selectedCurrency})` }));
     } else if (customAmount.trim()) {
       const curr = CURRENCIES[selectedCurrency] || CURRENCIES.USD;
       setFormData(prev => ({ ...prev, budget: `${curr.symbol}${customAmount.trim()} ${selectedCurrency}` }));
@@ -92,11 +108,22 @@ export default function ContactTerminal({ isOpen, onClose }) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
-  const handleNext = () => setStep(step + 1);
+  const isEmailValid = validateEmail(formData.email);
+  const canProceedStep1 = formData.name.trim().length >= 2 && isEmailValid;
+
+  const handleNext = () => {
+    if (step === 1 && !canProceedStep1) {
+      setEmailTouched(true);
+      return;
+    }
+    setStep(step + 1);
+  };
   const handleBack = () => setStep(step - 1);
   
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!formData.details.trim()) return;
+
     setIsSubmitting(true);
 
     router.post('/inquiry', formData, {
@@ -107,9 +134,10 @@ export default function ContactTerminal({ isOpen, onClose }) {
         setTimeout(() => {
           onClose();
           setStep(1);
-          setFormData({ name: '', email: '', budget: '', details: '' });
+          setFormData({ name: '', email: '', budget: '', details: '', hp_address: '' });
           setCustomAmount('');
           setIsFlexibleBudget(false);
+          setEmailTouched(false);
         }, 8000);
       },
       onError: () => {
@@ -131,19 +159,19 @@ export default function ContactTerminal({ isOpen, onClose }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[100]"
+            className="fixed inset-0 bg-black/85 backdrop-blur-xl z-[100]"
           />
 
           {/* Contact Modal */}
           <motion.div
-            initial={{ opacity: 0, y: 60, scale: 0.95 }}
+            initial={{ opacity: 0, y: 50, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 60, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 md:inset-0 md:m-auto w-full md:max-w-2xl h-[90vh] md:h-fit md:max-h-[85vh] bg-zinc-950 border border-amber-500/20 rounded-t-3xl md:rounded-3xl z-[101] flex flex-col overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.9)]"
+            exit={{ opacity: 0, y: 50, scale: 0.96 }}
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed bottom-0 left-0 right-0 md:inset-0 md:m-auto w-full md:max-w-2xl h-[92vh] md:h-fit md:max-h-[85vh] bg-zinc-950 border border-amber-500/20 rounded-t-3xl md:rounded-3xl z-[101] flex flex-col overflow-hidden shadow-[0_0_120px_rgba(0,0,0,0.95)]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-6 py-5 border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-md">
+            <div className="flex justify-between items-center px-6 py-5 border-b border-white/[0.06] bg-zinc-950/90 backdrop-blur-md">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
                   <span className="text-amber-400 text-sm">✉</span>
@@ -166,52 +194,90 @@ export default function ContactTerminal({ isOpen, onClose }) {
             <div className="p-6 md:p-10 flex-grow overflow-y-auto relative z-10">
               <AnimatePresence mode="wait">
                 
-                {/* ════════ STEP 1: ABOUT YOU ════════ */}
+                {/* ════════ STEP 1: ABOUT YOU & EMAIL VERIFICATION ════════ */}
                 {step === 1 && (
-                  <motion.div key="s1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
+                  <motion.div key="s1" initial={{ opacity: 0, x: 25 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -25 }} transition={{ duration: 0.25 }}>
                     <div className="flex items-center gap-2 text-zinc-500 mb-6">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                       <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-amber-400">Step 1 of 3 · Your Information</span>
                     </div>
+                    
                     <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-2 text-white font-heading">
                       Let's start with an introduction
                     </h3>
-                    <p className="text-zinc-400 text-xs md:text-sm mb-8">Tell us your name and where we can reach you.</p>
-                    
+                    <p className="text-zinc-400 text-xs md:text-sm mb-6">
+                      Tell us your name and your active email address so we can reply with your project proposal.
+                    </p>
+
+                    {/* Honeypot hidden input (Spam protection) */}
+                    <input 
+                      type="text" 
+                      name="hp_address" 
+                      value={formData.hp_address} 
+                      onChange={(e) => setFormData({...formData, hp_address: e.target.value})} 
+                      tabIndex="-1" 
+                      autoComplete="off" 
+                      className="hidden" 
+                    />
+
                     <div className="space-y-4 mb-8">
                       <div>
                         <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                          Your Full Name
+                          Your Full Name <span className="text-amber-400">*</span>
                         </label>
                         <input
                           type="text"
-                          placeholder="e.g. John Doe"
+                          placeholder="e.g. Olie Kings"
                           value={formData.name}
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
-                          onKeyDown={(e) => { if (e.key === 'Enter' && formData.name && formData.email) handleNext(); }}
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all"
+                          onKeyDown={(e) => { if (e.key === 'Enter' && canProceedStep1) handleNext(); }}
+                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all"
                           autoFocus
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                          Work Email Address
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                            Valid Email Address <span className="text-amber-400">*</span>
+                          </label>
+                          {formData.email && isEmailValid && (
+                            <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Valid email format
+                            </span>
+                          )}
+                        </div>
+
                         <input
                           type="email"
-                          placeholder="e.g. john@company.com"
+                          placeholder="e.g. hello@yourdomain.com"
                           value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          onKeyDown={(e) => { if (e.key === 'Enter' && formData.name && formData.email) handleNext(); }}
-                          className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all"
+                          onBlur={() => setEmailTouched(true)}
+                          onChange={(e) => {
+                            setEmailTouched(true);
+                            setFormData({...formData, email: e.target.value});
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && canProceedStep1) handleNext(); }}
+                          className={`w-full bg-white/[0.03] border rounded-2xl px-4 py-3.5 focus:outline-none text-white text-sm placeholder:text-zinc-600 transition-all ${
+                            emailTouched && formData.email && !isEmailValid
+                              ? 'border-red-500/60 focus:border-red-500 bg-red-500/[0.02]'
+                              : isEmailValid
+                              ? 'border-emerald-500/40 focus:border-emerald-500 focus:bg-white/[0.05]'
+                              : 'border-white/10 focus:border-amber-500/60 focus:bg-white/[0.05]'
+                          }`}
                         />
+
+                        {emailTouched && formData.email && !isEmailValid && (
+                          <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1 font-medium">
+                            <AlertCircle className="w-3.5 h-3.5" /> Please enter a valid deliverable email address (e.g. name@domain.com).
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <button
                       onClick={handleNext}
-                      disabled={!formData.name.trim() || !formData.email.trim()}
+                      disabled={!canProceedStep1}
                       className="w-full py-4 bg-amber-500 text-black font-extrabold text-xs uppercase tracking-widest rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-amber-400 transition-all hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] flex justify-center items-center gap-2"
                     >
                       <span>Continue</span>
@@ -220,9 +286,9 @@ export default function ContactTerminal({ isOpen, onClose }) {
                   </motion.div>
                 )}
 
-                {/* ════════ STEP 2: CUSTOM BUDGET & IP CURRENCY ════════ */}
+                {/* ════════ STEP 2: CUSTOM BUDGET (DEFAULT USD $) ════════ */}
                 {step === 2 && (
-                  <motion.div key="s2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
+                  <motion.div key="s2" initial={{ opacity: 0, x: 25 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -25 }} transition={{ duration: 0.25 }}>
                     <div className="flex items-center gap-2 text-zinc-500 mb-6">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                       <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-amber-400">Step 2 of 3 · Budget & Currency</span>
@@ -232,27 +298,37 @@ export default function ContactTerminal({ isOpen, onClose }) {
                       What is your allocated budget?
                     </h3>
                     <p className="text-zinc-400 text-xs md:text-sm mb-6">
-                      Select your preferred currency or enter the exact amount you want to work with.
+                      Enter the amount you would like to work with in <strong>USD ($)</strong> or select another currency.
                     </p>
+
+                    {/* Geolocation Recommended Currency Callout (If non-USD) */}
+                    {recommendedCurrency && recommendedCurrency !== selectedCurrency && (
+                      <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 mb-5 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-amber-300">
+                          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>Detected your local currency: <strong>{recommendedCurrency} ({CURRENCIES[recommendedCurrency]?.symbol})</strong></span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCurrency(recommendedCurrency);
+                            setIsFlexibleBudget(false);
+                          }}
+                          className="px-3 py-1 bg-amber-500 text-black text-[11px] font-bold uppercase tracking-wider rounded-lg hover:bg-amber-400 transition-colors"
+                        >
+                          Switch to {recommendedCurrency}
+                        </button>
+                      </div>
+                    )}
 
                     {/* Currency Selector Pills */}
                     <div className="mb-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                          Select Currency
-                        </label>
-                        {recommendedCurrency && (
-                          <span className="text-[10px] font-semibold text-amber-400/90 flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-amber-400" />
-                            Detected via Location: <strong className="text-amber-300">{recommendedCurrency}</strong>
-                          </span>
-                        )}
-                      </div>
-
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                        Currency (Default: USD $)
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {Object.values(CURRENCIES).map((c) => {
                           const isSelected = selectedCurrency === c.code;
-                          const isRec = recommendedCurrency === c.code;
 
                           return (
                             <button
@@ -264,19 +340,12 @@ export default function ContactTerminal({ isOpen, onClose }) {
                               }}
                               className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
                                 isSelected
-                                  ? 'bg-amber-500 text-black border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)] scale-[1.03]'
-                                  : isRec
-                                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:border-amber-500/60'
+                                  ? 'bg-amber-500 text-black border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)] scale-[1.02]'
                                   : 'bg-white/[0.02] text-zinc-400 border-white/10 hover:border-white/20 hover:text-white'
                               }`}
                             >
                               <span>{c.symbol}</span>
                               <span>{c.code}</span>
-                              {isRec && !isSelected && (
-                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 font-normal">
-                                  Auto
-                                </span>
-                              )}
                             </button>
                           );
                         })}
@@ -312,8 +381,8 @@ export default function ContactTerminal({ isOpen, onClose }) {
 
                     {/* Suggested Preset Buttons for Quick Choice */}
                     <div className="mb-6">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2.5">
-                        Or select a quick tier:
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                        Or pick a quick suggested range:
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {currObj.presets.map((preset) => (
@@ -381,7 +450,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
 
                 {/* ════════ STEP 3: PROJECT DETAILS ════════ */}
                 {step === 3 && (
-                  <motion.div key="s3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
+                  <motion.div key="s3" initial={{ opacity: 0, x: 25 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -25 }} transition={{ duration: 0.25 }}>
                     <div className="flex items-center gap-2 text-zinc-500 mb-6">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                       <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-amber-400">Step 3 of 3 · Project Overview</span>
@@ -391,7 +460,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
                       Tell us about your project
                     </h3>
                     <p className="text-zinc-400 text-xs md:text-sm mb-6">
-                      What are you building? E-commerce, web application, mobile app, or digital advertising?
+                      What are you looking to build? (Website, web app, mobile application, or digital growth).
                     </p>
 
                     {/* Summary Badge of User's budget */}
@@ -404,13 +473,13 @@ export default function ContactTerminal({ isOpen, onClose }) {
 
                     <div className="mb-8">
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                        Project Scope & Goals
+                        Project Scope & Goals <span className="text-amber-400">*</span>
                       </label>
                       <textarea
-                        placeholder="Briefly describe what you'd like us to engineer, desired timelines, or any links..."
+                        placeholder="Describe what you need built, your desired timeline, references, or key goals..."
                         value={formData.details}
                         onChange={(e) => setFormData({...formData, details: e.target.value})}
-                        className="w-full h-36 bg-white/[0.03] border border-white/10 rounded-2xl p-4 focus:outline-none focus:border-amber-500/50 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all resize-none"
+                        className="w-full h-36 bg-white/[0.03] border border-white/10 rounded-2xl p-4 focus:outline-none focus:border-amber-500/60 focus:bg-white/[0.05] text-white text-sm placeholder:text-zinc-600 transition-all resize-none"
                       />
                     </div>
 
@@ -437,7 +506,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
                           </span>
                         ) : (
                           <>
-                            <span>Send Message</span>
+                            <span>Send Inquiry</span>
                             <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                           </>
                         )}
@@ -463,7 +532,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
                       Inquiry Received!
                     </h3>
                     <p className="text-zinc-400 text-xs md:text-sm mb-6 max-w-sm">
-                      Thank you <strong className="text-white">{formData.name}</strong>. We've logged your request and our lead developer will review your scope within 24 hours.
+                      Thank you <strong className="text-white">{formData.name}</strong>. We've logged your project scope and our team will reply to <span className="text-amber-400">{formData.email}</span> within 24 hours.
                     </p>
 
                     <div className="flex flex-col gap-3 w-full max-w-sm">
@@ -495,7 +564,7 @@ export default function ContactTerminal({ isOpen, onClose }) {
               <motion.div
                 className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600"
                 animate={{ width: `${(Math.min(step, 3) / 3) * 100}%` }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.4 }}
               />
             </div>
           </motion.div>

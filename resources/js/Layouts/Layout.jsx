@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from 'fram
 import { ArrowUp, Menu, X, ArrowRight, Instagram, Linkedin, Github } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import WhatsAppButton, { WHATSAPP_URL, EMAIL } from '../Components/WhatsAppButton';
+import ContactTerminal from '../Components/ContactTerminal';
 
 // Twitter / X Custom SVG Icon
 function TwitterXIcon({ className = "w-4 h-4" }) {
@@ -18,6 +19,14 @@ export default function Layout({ children }) {
   const settings = props.settings || {};
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isContactOpen, setIsContactOpen] = useState(false);
+
+  // Global listener so any component can open the inquiry modal
+  useEffect(() => {
+    const handleOpenContact = () => setIsContactOpen(true);
+    window.addEventListener('open-contact-modal', handleOpenContact);
+    return () => window.removeEventListener('open-contact-modal', handleOpenContact);
+  }, []);
 
   // Mouse tracking for site-wide dynamic glow
   const mouseX = useMotionValue(-1000);
@@ -64,6 +73,9 @@ export default function Layout({ children }) {
       {/* Floating WhatsApp Button */}
       <WhatsAppButton />
 
+      {/* Global Interactive Contact Terminal Modal */}
+      <ContactTerminal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
+
       {/* ─── Header ─── */}
       <motion.header
         initial={false}
@@ -96,12 +108,13 @@ export default function Layout({ children }) {
             Team
             <span className="absolute bottom-0 left-0 w-0 h-px bg-amber-500 group-hover:w-full transition-all duration-300" />
           </Link>
-          <Link
-            href="/#contact"
-            className="px-5 py-2 rounded-full border border-amber-500/30 text-xs font-medium uppercase tracking-widest text-amber-400 hover:bg-amber-500 hover:text-black transition-all duration-300"
+          <button
+            type="button"
+            onClick={() => setIsContactOpen(true)}
+            className="px-5 py-2 rounded-full border border-amber-500/40 text-xs font-bold uppercase tracking-widest text-amber-400 hover:bg-amber-500 hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(245,158,11,0.08)] hover:shadow-[0_0_25px_rgba(245,158,11,0.3)] hover:scale-105"
           >
             Get in Touch
-          </Link>
+          </button>
         </nav>
 
         {/* Mobile Hamburger Button */}
@@ -184,13 +197,16 @@ export default function Layout({ children }) {
                   </svg>
                   Chat on WhatsApp
                 </a>
-                <Link
-                  href="/#contact"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full py-4 rounded-full bg-amber-500 text-black font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setIsContactOpen(true);
+                  }}
+                  className="w-full py-4 rounded-full bg-amber-500 text-black font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-amber-400 transition-colors"
                 >
                   Get in Touch <ArrowRight className="w-4 h-4" />
-                </Link>
+                </button>
                 <p className="text-[11px] text-zinc-600 text-center pt-2">
                   {EMAIL}
                 </p>
@@ -201,96 +217,57 @@ export default function Layout({ children }) {
       </AnimatePresence>
 
       {/* ─── Main Content ─── */}
-      <main className="flex-grow flex flex-col">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={url}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="flex-grow flex flex-col"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+      <main className="flex-grow pt-24">{children}</main>
 
       {/* ─── Footer ─── */}
-      <footer className="relative z-20 bg-black">
-        {/* Gradient line */}
-        <div className="line-glow" />
+      <footer className="border-t border-amber-500/10 bg-black/60 backdrop-blur-xl relative z-10">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-16">
+            {/* Col 1: Brand & Bio */}
+            <div className="md:col-span-5 flex flex-col justify-between">
+              <div>
+                <Link href="/" className="inline-flex items-center gap-3 text-lg font-bold tracking-tighter uppercase mb-4 group">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 group-hover:scale-125 transition-transform" />
+                  <span>{settings.site_name || 'SURPRISE-MFs TECH'}</span>
+                </Link>
+                <p className="text-zinc-400 text-sm leading-relaxed max-w-sm">
+                  {settings.about_text || 'Premium software engineering, digital product design, and growth systems for forward-thinking brands globally.'}
+                </p>
+              </div>
+              <div className="mt-8 pt-8 border-t border-white/[0.06]">
+                <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">Direct Contact</p>
+                <a href={`mailto:${EMAIL}`} className="text-sm text-zinc-300 hover:text-amber-400 transition-colors">
+                  {EMAIL}
+                </a>
+              </div>
+            </div>
 
-        <div className="px-6 md:px-12 py-20 max-w-7xl mx-auto">
-          {/* Top: Large branded sign-off */}
-          <div className="mb-16">
-            <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter uppercase leading-[0.9] mb-8 text-gradient-static">
-              Let's build something<br />great together.
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <a
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 px-6 py-3.5 rounded-full btn-whatsapp font-bold text-xs uppercase tracking-widest"
+            {/* Col 2: Navigation Links */}
+            <div className="md:col-span-3 flex flex-col gap-3">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 mb-2">Explore</span>
+              <Link href="/#services" className="text-sm text-zinc-400 hover:text-amber-400 transition-colors w-fit">
+                Services
+              </Link>
+              <Link href="/projects" className="text-sm text-zinc-400 hover:text-amber-400 transition-colors w-fit">
+                Featured Projects
+              </Link>
+              <Link href="/team" className="text-sm text-zinc-400 hover:text-amber-400 transition-colors w-fit">
+                Our Team
+              </Link>
+              <button 
+                type="button"
+                onClick={() => setIsContactOpen(true)}
+                className="text-sm text-zinc-400 hover:text-amber-400 transition-colors w-fit text-left"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
-                Chat on WhatsApp
-              </a>
-              <a
-                href={`mailto:${EMAIL}`}
-                className="inline-flex items-center gap-3 text-lg md:text-xl hover:text-amber-400 transition-colors group"
-              >
-                {EMAIL}
-                <span className="w-6 h-6 rounded-full border border-amber-500/20 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-black transition-all text-xs">→</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Middle: Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 pb-16 border-b border-white/5">
-            {/* Navigation */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-widest text-amber-400/60 mb-6">Navigation</h4>
-              <div className="flex flex-col gap-3">
-                <Link href="/" className="text-zinc-400 hover:text-white transition-colors text-sm">Home</Link>
-                <Link href="/#services" className="text-zinc-400 hover:text-white transition-colors text-sm">Services</Link>
-                <Link href="/projects" className="text-zinc-400 hover:text-white transition-colors text-sm">Projects</Link>
-                <Link href="/team" className="text-zinc-400 hover:text-white transition-colors text-sm">Team</Link>
-                <Link href="/#contact" className="text-zinc-400 hover:text-white transition-colors text-sm">Contact</Link>
-              </div>
+                Send Inquiry
+              </button>
             </div>
 
-            {/* Services */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-widest text-amber-400/60 mb-6">Services</h4>
-              <div className="flex flex-col gap-3">
-                <Link href="/service/ui-ux-design" className="text-zinc-400 hover:text-white transition-colors text-sm">UI/UX Design</Link>
-                <Link href="/service/custom-web-apps" className="text-zinc-400 hover:text-white transition-colors text-sm">Web Applications</Link>
-                <Link href="/service/mobile-apps" className="text-zinc-400 hover:text-white transition-colors text-sm">Mobile Apps</Link>
-                <Link href="/service/digital-advertising" className="text-zinc-400 hover:text-white transition-colors text-sm">Digital Advertising</Link>
-              </div>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-widest text-amber-400/60 mb-6">Contact</h4>
-              <div className="flex flex-col gap-3">
-                <a href={`mailto:${EMAIL}`} className="text-zinc-400 hover:text-amber-400 transition-colors text-sm">{EMAIL}</a>
-                <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-green-400 transition-colors text-sm">WhatsApp Direct</a>
-                {settings.contact_email && settings.contact_email !== EMAIL && (
-                  <a href={`mailto:${settings.contact_email}`} className="text-zinc-400 hover:text-amber-400 transition-colors text-sm">{settings.contact_email}</a>
-                )}
-              </div>
-            </div>
-
-            {/* Social Media + Back to top */}
-            <div className="flex flex-col justify-between">
+            {/* Col 3: Socials & Back to Top */}
+            <div className="md:col-span-4 flex flex-col justify-between">
               {socialLinks.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-xs font-medium uppercase tracking-widest text-amber-400/60 mb-6">Follow Us</h4>
+                <div className="mb-8">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 block mb-4">Connect</span>
                   <div className="flex flex-wrap gap-2.5">
                     {socialLinks.map(social => (
                       <a
